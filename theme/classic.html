@@ -34,7 +34,7 @@
         .list-container{position:relative;overflow:hidden;border-radius:15px;}
         .list-header-container{position:relative}
         .list-header-container a.back-link{color:#000;display:inline-block;position:absolute;font-size:16px;margin:20px 10px;padding:10px 10px;vertical-align:middle;text-decoration:none}
-        .list-container,.list-header-container,.list-wrapper,a.back-link:hover,body{color:#24292e}
+        .list-container,.list-header-container,.list-wrapper,a.back-link:hover,body{color:#2ebaff}
         .table-header{margin:0;border:0 none;padding:30px 30px;text-align:left;font-weight:400;color:#000;background-color:rgba(245,245,245,0.5);word-break: break-all;word-wrap: break-word;}
         .list-body-container{position:relative;left:0;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;background:rgba(245,245,245,0.5)}
         .more-disk{margin:0;border:0 none;padding:30px 30px;text-align:left;font-weight:400;color:#000;background-color:rgba(245,245,245,0.5);white-space:nowrap;overflow:auto;}
@@ -598,7 +598,7 @@
     });
     function renderpage(pdf,i)
     {
-        pdf.getPage(i).then(function(page) { 
+        pdf.getPage(i).then(function(page) {
             var scale = 1.5;
             var viewport = page.getViewport({ scale: scale, });
             var canvas = document.getElementById('pdf-c'+i);
@@ -620,7 +620,7 @@
     if ($head) {
         //document.getElementById('head-div').parentNode.insertBefore(document.getElementById('head-div'),document.getElementById('list-div'));
         $head.innerHTML = marked(document.getElementById('head-md').innerText);
-        
+
     }
 <!--HeadmdEnd-->
 <!--ReadmemdStart-->
