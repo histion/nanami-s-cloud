@@ -58,37 +58,37 @@ $EnvConfigs = [
     'public_path'       => 0b111,
 ];
 
-$timezones = array( 
-    '-12'=>'Pacific/Kwajalein', 
-    '-11'=>'Pacific/Samoa', 
-    '-10'=>'Pacific/Honolulu', 
-    '-9'=>'America/Anchorage', 
-    '-8'=>'America/Los_Angeles', 
-    '-7'=>'America/Denver', 
-    '-6'=>'America/Mexico_City', 
-    '-5'=>'America/New_York', 
-    '-4'=>'America/Caracas', 
-    '-3.5'=>'America/St_Johns', 
-    '-3'=>'America/Argentina/Buenos_Aires', 
+$timezones = array(
+    '-12'=>'Pacific/Kwajalein',
+    '-11'=>'Pacific/Samoa',
+    '-10'=>'Pacific/Honolulu',
+    '-9'=>'America/Anchorage',
+    '-8'=>'America/Los_Angeles',
+    '-7'=>'America/Denver',
+    '-6'=>'America/Mexico_City',
+    '-5'=>'America/New_York',
+    '-4'=>'America/Caracas',
+    '-3.5'=>'America/St_Johns',
+    '-3'=>'America/Argentina/Buenos_Aires',
     '-2'=>'America/Noronha',
-    '-1'=>'Atlantic/Azores', 
-    '0'=>'UTC', 
-    '1'=>'Europe/Paris', 
-    '2'=>'Europe/Helsinki', 
-    '3'=>'Europe/Moscow', 
-    '3.5'=>'Asia/Tehran', 
-    '4'=>'Asia/Baku', 
-    '4.5'=>'Asia/Kabul', 
-    '5'=>'Asia/Karachi', 
+    '-1'=>'Atlantic/Azores',
+    '0'=>'UTC',
+    '1'=>'Europe/Paris',
+    '2'=>'Europe/Helsinki',
+    '3'=>'Europe/Moscow',
+    '3.5'=>'Asia/Tehran',
+    '4'=>'Asia/Baku',
+    '4.5'=>'Asia/Kabul',
+    '5'=>'Asia/Karachi',
     '5.5'=>'Asia/Calcutta', //Asia/Colombo
     '6'=>'Asia/Dhaka',
-    '6.5'=>'Asia/Rangoon', 
-    '7'=>'Asia/Bangkok', 
-    '8'=>'Asia/Shanghai', 
-    '9'=>'Asia/Tokyo', 
-    '9.5'=>'Australia/Darwin', 
-    '10'=>'Pacific/Guam', 
-    '11'=>'Asia/Magadan', 
+    '6.5'=>'Asia/Rangoon',
+    '7'=>'Asia/Bangkok',
+    '8'=>'Asia/Shanghai',
+    '9'=>'Asia/Tokyo',
+    '9.5'=>'Australia/Darwin',
+    '10'=>'Pacific/Guam',
+    '11'=>'Asia/Magadan',
     '12'=>'Asia/Kamchatka'
 );
 
@@ -149,7 +149,7 @@ function main($path)
     if (isset($_COOKIE['timezone'])&&$_COOKIE['timezone']!='') $_SERVER['timezone'] = $_COOKIE['timezone'];
     if ($_SERVER['timezone']=='') $_SERVER['timezone'] = 0;
     $_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
-    
+
 
     if (getConfig('admin')=='') return install();
     if (getConfig('adminloginpage')=='') {
@@ -903,7 +903,7 @@ function adminform($name = '', $pass = '', $path = '')
         return true;
         var timestamp = new Date().getTime();
         f.timestamp.value = timestamp;
-        //f.password1.value = 
+        //f.password1.value =
     }
 </script>';
     $html .= '</html>';
@@ -1420,7 +1420,7 @@ function EnvOpt($needUpdate = 0)
                 document.updateform.branch.options.length=0;
                 JSON.parse(xhr.responseText).forEach( function (e) {
                     document.updateform.branch.options.add(new Option(e.name,e.name));
-                    if ("master"==e.name) document.updateform.branch.options[document.updateform.branch.options.length-1].selected = true; 
+                    if ("master"==e.name) document.updateform.branch.options[document.updateform.branch.options.length-1].selected = true;
                 });
                 document.updateform.QueryBranchs.style.display="none";
             } else {
@@ -1536,7 +1536,7 @@ function render_list($path = '', $files = [])
                 if (!!$tmp['body']) $html = $tmp['body'];
                 savecache('customTheme', $html, '', 9999);
             }
-            
+
         }
 
         $tmp = splitfirst($html, '<!--IconValuesStart-->');
@@ -1615,7 +1615,7 @@ function render_list($path = '', $files = [])
             while (strpos($html, '<!--constStr@File-->')) $html = str_replace('<!--constStr@File-->', getconstStr('File'), $html);
             while (strpos($html, '<!--constStr@Name-->')) $html = str_replace('<!--constStr@Name-->', getconstStr('Name'), $html);
             while (strpos($html, '<!--constStr@Content-->')) $html = str_replace('<!--constStr@Content-->', getconstStr('Content'), $html);
-            
+
         } else {
             $tmp[1] = 'a';
             while ($tmp[1]!='') {
@@ -1843,7 +1843,7 @@ function render_list($path = '', $files = [])
             }
             $html = str_replace('<!--FileEncodeUrl-->', str_replace('%2523', '%23', str_replace('%26amp%3B','&amp;',spurlencode(path_format($_SERVER['base_disk_path'] . '/' . $path), '/'))), $html);
             $html = str_replace('<!--FileUrl-->', path_format($_SERVER['base_disk_path'] . '/' . $path), $html);
-            
+
             $ext = strtolower(substr($path, strrpos($path, '.') + 1));
             if (in_array($ext, $exts['img'])) $ext = 'img';
             elseif (in_array($ext, $exts['video'])) $ext = 'video';
@@ -1974,7 +1974,7 @@ function render_list($path = '', $files = [])
             if ($files['childcount']>200) {
                 while (strpos($html, '<!--MorePageStart-->')) $html = str_replace('<!--MorePageStart-->', '', $html);
                 while (strpos($html, '<!--MorePageEnd-->')) $html = str_replace('<!--MorePageEnd-->', '', $html);
-                
+
                 $pagenum = $files['page'];
                 if ($pagenum=='') $pagenum = 1;
                 $maxpage = ceil($files['childcount']/200);
@@ -2033,7 +2033,7 @@ function render_list($path = '', $files = [])
                     $html .= $tmp[1];
                 }
             }
-            
+
         }
 
         $html = str_replace('<!--constStr@language-->', $constStr['language'], $html);
@@ -2068,7 +2068,7 @@ function render_list($path = '', $files = [])
 
         $html = str_replace('<!--customCss-->', getConfig('customCss'), $html);
         $html = str_replace('<!--customScript-->', getConfig('customScript'), $html);
-        
+
         while (strpos($html, '<!--constStr@Login-->')) $html = str_replace('<!--constStr@Login-->', getconstStr('Login'), $html);
         while (strpos($html, '<!--constStr@Close-->')) $html = str_replace('<!--constStr@Close-->', getconstStr('Close'), $html);
         while (strpos($html, '<!--constStr@InputPassword-->')) $html = str_replace('<!--constStr@InputPassword-->', getconstStr('InputPassword'), $html);
@@ -2088,7 +2088,7 @@ function render_list($path = '', $files = [])
         while (strpos($html, '<!--constStr@Expect-->')) $html = str_replace('<!--constStr@Expect-->', getconstStr('Expect'), $html);
         while (strpos($html, '<!--constStr@UploadErrorUpAgain-->')) $html = str_replace('<!--constStr@UploadErrorUpAgain-->', getconstStr('UploadErrorUpAgain'), $html);
         while (strpos($html, '<!--constStr@EndAt-->')) $html = str_replace('<!--constStr@EndAt-->', getconstStr('EndAt'), $html);
-        
+
         while (strpos($html, '<!--constStr@UploadComplete-->')) $html = str_replace('<!--constStr@UploadComplete-->', getconstStr('UploadComplete'), $html);
         while (strpos($html, '<!--constStr@CopyUrl-->')) $html = str_replace('<!--constStr@CopyUrl-->', getconstStr('CopyUrl'), $html);
         while (strpos($html, '<!--constStr@UploadFail23-->')) $html = str_replace('<!--constStr@UploadFail23-->', getconstStr('UploadFail23'), $html);
@@ -2155,7 +2155,7 @@ function render_list($path = '', $files = [])
             }
             $html .= $tmp[1];
         }
-        
+
         $tmp = splitfirst($html, '<!--SelectLanguageStart-->');
         $html = $tmp[0];
         $tmp = splitfirst($tmp[1], '<!--SelectLanguageEnd-->');
@@ -2175,7 +2175,7 @@ function render_list($path = '', $files = [])
         if (isset($_SERVER['needUpdate'])&&$_SERVER['needUpdate']) $NeedUpdateStr = str_replace('<!--constStr@NeedUpdate-->', getconstStr('NeedUpdate'), $NeedUpdateStr);
         else $NeedUpdateStr ='';
         $html .= $NeedUpdateStr . $tmp[1];
-        
+
         $tmp = splitfirst($html, '<!--BackArrowStart-->');
         $html = $tmp[0];
         $tmp = splitfirst($tmp[1], '<!--BackArrowEnd-->');
@@ -2204,9 +2204,9 @@ function render_list($path = '', $files = [])
             } else $html .= $tmp[1];
         }
         $imgextstr = '';
-        foreach ($exts['img'] as $imgext) $imgextstr .= '\''.$imgext.'\', '; 
+        foreach ($exts['img'] as $imgext) $imgextstr .= '\''.$imgext.'\', ';
         $html = str_replace('<!--ImgExts-->', $imgextstr, $html);
-        
+
 
         $html = str_replace('<!--Sitename-->', $_SERVER['sitename'], $html);
 
@@ -2236,7 +2236,7 @@ function render_list($path = '', $files = [])
         if ($diskname=='') $diskname = $_SERVER['disktag'];
         //if (strlen($diskname)>15) $diskname = substr($diskname, 0, 12).'...';
         while (strpos($html, '<!--DiskNameNow-->')) $html = str_replace('<!--DiskNameNow-->', $diskname, $html);
-        
+
         $tmp = splitfirst($html, '<!--HeadomfStart-->');
         $html = $tmp[0];
         $tmp = splitfirst($tmp[1], '<!--HeadomfEnd-->');
@@ -2244,7 +2244,7 @@ function render_list($path = '', $files = [])
             $headomf = str_replace('<!--HeadomfContent-->', get_content(spurlencode(path_format($path . '/head.omf'), '/'))['content']['body'], $tmp[0]);
         }
         $html .= $headomf . $tmp[1];
-        
+
         $tmp = splitfirst($html, '<!--HeadmdStart-->');
         $html = $tmp[0];
         $tmp = splitfirst($tmp[1], '<!--HeadmdEnd-->');
@@ -2299,7 +2299,7 @@ function render_list($path = '', $files = [])
             }
         }
 
-        
+
         $tmp = splitfirst($html, '<!--FootomfStart-->');
         $html = $tmp[0];
         $tmp = splitfirst($tmp[1], '<!--FootomfEnd-->');
@@ -2308,7 +2308,7 @@ function render_list($path = '', $files = [])
         }
         $html .= $Footomf . $tmp[1];
 
-        
+
         $tmp = splitfirst($html, '<!--MdRequireStart-->');
         $html = $tmp[0];
         $tmp = splitfirst($tmp[1], '<!--MdRequireEnd-->');
