@@ -1,6 +1,6 @@
 <?php
 
-HEAD /header('Access-Control-Allow-Origin:*');  //跨域设置
+header('Access-Control-Allow-Origin:*');  //跨域设置
 //error_reporting(E_ALL & ~E_NOTICE);
 error_reporting(0);
 include 'vendor/autoload.php';
