@@ -581,7 +581,7 @@
             console.log(videos[i]);
             new DPlayer({
                 container: document.getElementById('video-a' + i),
-                screenshot: true,
+                screenshot: false,
                 video: {
                     url: videos[i]
                 }
@@ -611,7 +611,7 @@
     });
     function renderpage(pdf,i)
     {
-        pdf.getPage(i).then(function(page) { 
+        pdf.getPage(i).then(function(page) {
             var scale = 1.5;
             var viewport = page.getViewport({ scale: scale, });
             var canvas = document.getElementById('pdf-c'+i);
@@ -633,7 +633,7 @@
     if ($head) {
         //document.getElementById('head-div').parentNode.insertBefore(document.getElementById('head-div'),document.getElementById('list-div'));
         $head.innerHTML = marked(document.getElementById('head-md').innerText);
-        
+
     }
 <!--HeadmdEnd-->
 <!--ReadmemdStart-->
