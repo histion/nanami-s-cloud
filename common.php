@@ -1,5 +1,5 @@
 <?php
-
+header('Access-Control-Allow-Origin:*');  //跨域设置
 global $timezones;
 global $slash;
 global $drive;

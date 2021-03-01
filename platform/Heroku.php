@@ -1,5 +1,5 @@
 <?php
-
+header('Access-Control-Allow-Origin:*');  //跨域设置
 function getpath()
 {
     $_SERVER['firstacceptlanguage'] = strtolower(splitfirst(splitfirst($_SERVER['HTTP_ACCEPT_LANGUAGE'],';')[0],',')[0]);
@@ -228,7 +228,7 @@ function HerokuAPI($method, $url, $data = '', $apikey)
 {
     if ($method=='PATCH'||$method=='POST') {
         $headers['Content-Type'] = 'application/json';
-    } 
+    }
     $headers['Authorization'] = 'Bearer ' . $apikey;
     $headers['Accept'] = 'application/vnd.heroku+json; version=3';
     //if (!isset($headers['Accept'])) $headers['Accept'] = '*/*';
