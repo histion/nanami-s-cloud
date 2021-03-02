@@ -1,5 +1,6 @@
 <?php
-header('Access-Control-Allow-Origin:*');  //跨域设置
+header('Access-Control-Allow-Origin:*');
+header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept"); //跨域设置
 global $exts;
 global $constStr;
 
