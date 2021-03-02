@@ -1,6 +1,5 @@
 <?php
-header('Access-Control-Allow-Origin:*');
-header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept"); //跨域设置
+
 function getpath()
 {
     $_SERVER['firstacceptlanguage'] = strtolower(splitfirst(splitfirst($_SERVER['HTTP_ACCEPT_LANGUAGE'],';')[0],',')[0]);
