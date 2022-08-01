@@ -1,0 +1,4 @@
+<div class="pio-container left">
+  <div class="pio-action"></div>
+  <canvas id="pio" width="350" height="350"></canvas>
+</div>

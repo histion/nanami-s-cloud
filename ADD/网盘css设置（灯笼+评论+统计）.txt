@@ -1,0 +1,22 @@
+<script>
+    var OriginTitile=document.title;
+    var st;
+    document.addEventListener('visibilitychange',function(){
+    if(document.hidden){
+      document.title="ヽ(*。>Д<)o你要去哪！？";
+      clearTimeout(st);
+      console.log('hide');
+    }else{
+      document.title='(*´∇｀*)~欢迎回来 '+OriginTitile;
+      console.log('show');
+      st=setTimeout(function(){
+          document.title=OriginTitile;
+      },4000);
+      console.log('endChange=');
+    }
+    });
+
+</script>
+<script src='https://cdn.jsdelivr.net/gh/histion/nanami-s-cloud@1.0/ADD/Valine.min.js'></script><script>var cwrap=document.createElement('div');var vwrap=document.createElement('div');var vcomment=document.createElement('div');cwrap.classList="list-wrapper";cwrap.id="comment-div";vwrap.classList="list-container";vcomment.id="vcomments";document.body.appendChild(cwrap);cwrap.appendChild(vwrap);vwrap.appendChild(vcomment);new Valine({el: '#vcomments',appId: 'JWVBku7jc9w72OOnjc71hkdj-MdYXbMMI',appKey: 't9KJjQldn5AzuCI9HKFTfAiG',placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!',path: window.location.pathname,avatar:'mm', meta:['nick','mail'],requiredFields:['nick'],pageSize:10,visitor:true,recordIP:true,emojiCDN: 'https://img.t.sinajs.cn/t4/appstyle/expression/ext/normal/'});cwrap.style.padding="20px 50px";cwrap.style.boxSizing="border-box";</script><script src="https://cdn.jsdelivr.net/gh/histion/nanami-s-cloud@1.0/ADD/denglong.js"></script>
+
+
