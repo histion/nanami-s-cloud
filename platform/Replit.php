@@ -4,19 +4,16 @@ function getpath()
 {
     $_SERVER['firstacceptlanguage'] = strtolower(splitfirst(splitfirst($_SERVER['HTTP_ACCEPT_LANGUAGE'],';')[0],',')[0]);
     if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
-    if (isset($_SERVER['HTTP_FLY_CLIENT_IP'])) $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_FLY_CLIENT_IP'];
-    if ($_SERVER['HTTP_FLY_FORWARDED_PROTO']!='') $_SERVER['REQUEST_SCHEME'] = $_SERVER['HTTP_FLY_FORWARDED_PROTO'];
-    if ($_SERVER['HTTP_X_FORWARDED_PROTO']!='') {
-        $tmp = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'])[0];
-        if ($tmp=='http'||$tmp=='https') $_SERVER['REQUEST_SCHEME'] = $tmp;
-    }
     if ($_SERVER['REQUEST_SCHEME']!='http'&&$_SERVER['REQUEST_SCHEME']!='https') {
-        $_SERVER['REQUEST_SCHEME'] = 'http';
+        if ($_SERVER['HTTP_X_FORWARDED_PROTO']!='') {
+            $tmp = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'])[0];
+            if ($tmp=='http'||$tmp=='https') $_SERVER['REQUEST_SCHEME'] = $tmp;
+        }
+        if ($_SERVER['HTTP_FLY_FORWARDED_PROTO']!='') $_SERVER['REQUEST_SCHEME'] = $_SERVER['HTTP_FLY_FORWARDED_PROTO'];
     }
     $_SERVER['host'] = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
     $_SERVER['referhost'] = explode('/', $_SERVER['HTTP_REFERER'])[2];
-    if (isset($_SERVER['DOCUMENT_ROOT'])&&$_SERVER['DOCUMENT_ROOT']==='/app') $_SERVER['base_path'] = '/';
-    else $_SERVER['base_path'] = path_format(substr($_SERVER['SCRIPT_NAME'], 0, -10) . '/');
+    $_SERVER['base_path'] = '/';
     if (isset($_SERVER['UNENCODED_URL'])) $_SERVER['REQUEST_URI'] = $_SERVER['UNENCODED_URL'];
     $p = strpos($_SERVER['REQUEST_URI'],'?');
     if ($p>0) $path = substr($_SERVER['REQUEST_URI'], 0, $p);
@@ -65,40 +62,49 @@ function getGET()
     }
 }
 
+function ReplitAPI($op, $key, $value = '') {
+    //error_log1($op . '_' . $key . '_' . $value);
+    $apiurl = getenv('REPLIT_DB_URL');
+    //foreach (explode("\n", curl('GET', $apiurl . '?prefix')['body']) as $a) curl('DELETE', $apiurl . '/' . $a);
+    if ($op === 'r') {
+        if (!($config = getcache('REPLIT_CONFIG'))) {
+            $config = json_decode(curl('GET', $apiurl . '/REPLIT_CONFIG')['body'], true);
+            savecache('REPLIT_CONFIG', $config);
+        }
+        return ['stat'=>200, 'body'=>(is_array($config[$key])?json_encode($config[$key]):$config[$key])];
+    } elseif ($op === 'w') {
+        return curl('POST', $apiurl, 'REPLIT_CONFIG=' . $value, ["Content-Type"=>"application/x-www-form-urlencoded"]);
+    } elseif ($op === 'd') {
+        // not use
+        return curl('DELETE', $apiurl . '/' . $key);
+    } else {
+        return ['stat'=>500, 'body'=>'error option input to function ReplitAPI().'];
+    }
+}
+
 function getConfig($str, $disktag = '')
 {
-    global $slash;
-    $projectPath = splitlast(__DIR__, $slash)[0];
-    $configPath = $projectPath . $slash . '.data' . $slash . 'config.php';
-    $s = file_get_contents($configPath);
-    $configs = '{' . splitlast(splitfirst($s, '{')[1], '}')[0] . '}';
-    if ($configs!='') {
-        $envs = json_decode($configs, true);
-        if (isInnerEnv($str)) {
-            if ($disktag=='') $disktag = $_SERVER['disktag'];
-            if (isset($envs[$disktag][$str])) {
-                if (isBase64Env($str)) return base64y_decode($envs[$disktag][$str]);
-                else return $envs[$disktag][$str];
-            }
-        } else {
-            if (isset($envs[$str])) {
-                if (isBase64Env($str)) return base64y_decode($envs[$str]);
-                else return $envs[$str];
-            }
+    if (isInnerEnv($str)) {
+        if ($disktag=='') $disktag = $_SERVER['disktag'];
+        $env = json_decode(ReplitAPI('r', $disktag)['body'], true);
+        if (isset($env[$str])) {
+            if (isBase64Env($str)) return base64y_decode($env[$str]);
+            else return $env[$str];
         }
+    } else {
+        if (isBase64Env($str)) return base64y_decode(ReplitAPI('r', $str)['body']);
+        else return ReplitAPI('r', $str)['body'];
     }
     return '';
 }
 
 function setConfig($arr, $disktag = '')
 {
-    global $slash;
+    if (!($envs = getcache('REPLIT_CONFIG'))) {
+        $envs = json_decode(curl('GET', getenv('REPLIT_DB_URL') . '/REPLIT_CONFIG')['body'], true);
+        savecache('REPLIT_CONFIG', $envs);
+    }
     if ($disktag=='') $disktag = $_SERVER['disktag'];
-    $projectPath = splitlast(__DIR__, $slash)[0];
-    $configPath = $projectPath . $slash . '.data' . $slash . 'config.php';
-    $s = file_get_contents($configPath);
-    $configs = '{' . splitlast(splitfirst($s, '{')[1], '}')[0] . '}';
-    if ($configs!='') $envs = json_decode($configs, true);
     $disktags = explode("|", getConfig('disktag'));
     $indisk = 0;
     $operatedisk = 0;
@@ -125,12 +131,7 @@ function setConfig($arr, $disktag = '')
         } elseif ($k=='disktag_rename' || $k=='disktag_newname') {
             if ($arr['disktag_rename']!=$arr['disktag_newname']) $operatedisk = 1;
         } else {
-            //$tmpdisk = json_decode($v, true);
-            //var_dump($tmpdisk);
-            //error_log(json_encode($tmpdisk));
-            //if ($tmpdisk===null) 
             $envs[$k] = $v;
-            //else $envs[$k] = $tmpdisk;
         }
     }
     if ($indisk) {
@@ -157,15 +158,12 @@ function setConfig($arr, $disktag = '')
         }
     }
     $envs = array_filter($envs, 'array_value_isnot_null');
-    //ksort($envs);
     sortConfig($envs);
-    
-    //echo '<pre>'. json_encode($envs, JSON_PRETTY_PRINT).'</pre>';
-    $prestr = '<?php $configs = \'' . PHP_EOL;
-    $aftstr = PHP_EOL . '\';';
-    $response = file_put_contents($configPath, $prestr . json_encode($envs, JSON_PRETTY_PRINT) . $aftstr);
-    if ($response>0) return json_encode( [ 'response' => 'success' ] );
-    return json_encode( [ 'message' => 'Failed to write config.', 'code' => 'failed' ] );
+    $response = ReplitAPI('w', 'REPLIT_CONFIG', json_encode($envs));
+    //error_log1(json_encode($arr, JSON_PRETTY_PRINT) . ' => tmp：' . json_encode($envs, JSON_PRETTY_PRINT));
+    savecache('REPLIT_CONFIG', null, '', 0);
+    if (api_error($response)) return ['stat'=>$response['stat'], 'body'=>$response['body'] . "<br>\nError in writting " . $key . "=" . $val];
+    return $response;
 }
 
 function install()
@@ -194,23 +192,21 @@ function install()
         }
     }
     if ($_GET['install1']) {
-        if (!ConfigWriteable()) {
+        /*if (!ConfigWriteable()) {
             $html .= getconstStr('MakesuerWriteable');
             $title = 'Error';
             return message($html, $title, 201);
         }
-        /*if (!RewriteEngineOn()) {
+        if (!RewriteEngineOn()) {
             $html .= getconstStr('MakesuerRewriteOn');
             $title = 'Error';
             return message($html, $title, 201);
         }*/
-        $html .= '<button id="checkrewritebtn" onclick="checkrewrite();">'.getconstStr('MakesuerRewriteOn').'</button>
-<div id="formdiv" style="display: none">
+        $html .= '
     <form action="?install2" method="post" onsubmit="return notnull(this);">
         <input name="admin" type="password" placeholder="' . getconstStr('EnvironmentsDescription')['admin'] . '" size="' . strlen(getconstStr('EnvironmentsDescription')['admin']) . '"><br>
-        <input id="submitbtn" type="submit" value="'.getconstStr('Submit').'" disabled>
+        <input id="submitbtn" type="submit" value="'.getconstStr('Submit').'">
     </form>
-</div>
     <script>
         var nowtime= new Date();
         var timezone = 0-nowtime.getTimezoneOffset()/60;
@@ -225,29 +221,6 @@ function install()
                 return false;
             }
             return true;
-        }
-        function checkrewrite()
-        {
-            url=location.protocol + "//" + location.host;
-            //if (location.port!="") url += ":" + location.port;
-            url += location.pathname;
-            if (url.substr(-1)!="/") url += "/";
-            url += "app.json";
-            url += "?" + Date.now();
-            var xhr4 = new XMLHttpRequest();
-            xhr4.open("GET", url);
-            xhr4.setRequestHeader("x-requested-with","XMLHttpRequest");
-            xhr4.send(null);
-            xhr4.onload = function(e){
-                console.log(xhr4.responseText+","+xhr4.status);
-                if (xhr4.status==201) {
-                    document.getElementById("checkrewritebtn").style.display = "none";
-                    document.getElementById("submitbtn").disabled = false;
-                    document.getElementById("formdiv").style.display = "";
-                } else {
-                    alert("' . getconstStr('MakesuerRewriteOn') . '?\nfalse\n\nUrl: " + url + "\nExpect http code 201, but received " + xhr4.status);
-                }
-            }
         }
     </script>';
         $title = getconstStr('SetAdminPassword');
@@ -296,38 +269,37 @@ function ConfigWriteable()
 
 function api_error($response)
 {
-    return isset($response['message']);
+    return !($response['stat']==200||$response['stat']==204||$response['stat']==404);
+    //return isset($response['message']);
 }
 
 function api_error_msg($response)
 {
-    return $response['code'] . '<br>
-' . $response['message'] . '<br>
+    return '<pre>'. json_encode($response, JSON_PRETTY_PRINT).'</pre>' . '<br>
 <button onclick="location.href = location.href;">'.getconstStr('Refresh').'</button>';
 }
 
 function setConfigResponse($response)
 {
-    return json_decode($response, true);
+    return $response;
+    //return json_decode($response, true);
 }
 
 function OnekeyUpate($GitSource = 'Github', $auth = 'qkqpttgf', $project = 'OneManager-php', $branch = 'master')
 {
-    global $slash;
     // __DIR__ is xxx/platform
-    $projectPath = splitlast(__DIR__, $slash)[0];
+    $projectPath = splitlast(__DIR__, '/')[0];
 
     if ($GitSource=='Github') {
         // 从github下载对应tar.gz，并解压
         $url = 'https://github.com/' . $auth . '/' . $project . '/tarball/' . urlencode($branch) . '/';
     } elseif ($GitSource=='HITGitlab') {
         $url = 'https://git.hit.edu.cn/' . $auth . '/' . $project . '/-/archive/' . urlencode($branch) . '/' . $project . '-' . urlencode($branch) . '.tar.gz';
-    } else return 0;
-    $tarfile = $projectPath . $slash .'github.tar.gz';
+    } else return ['stat'=>500, 'body'=>'Git Source input Error!'];
+    $tarfile = $projectPath . '/github.tar.gz';
     $githubfile = file_get_contents($url);
-    if (!$githubfile) return 0;
+    if (!$githubfile) return ['stat'=>500, 'body'=>'download error from github.'];
     file_put_contents($tarfile, $githubfile);
-
     if (splitfirst(PHP_VERSION, '.')[0] > '5') {
         $phar = new PharData($tarfile); // need php5.3, 7, 8
         $phar->extractTo($projectPath, null, true);//路径 要解压的文件 是否覆盖
@@ -341,39 +313,31 @@ function OnekeyUpate($GitSource = 'Github', $auth = 'qkqpttgf', $project = 'OneM
     $outPath = '';
     $outPath = findIndexPath($projectPath);
     //error_log1($outPath);
-    if ($outPath=='') return 0;
+    if ($outPath=='') return ['stat'=>500, 'body'=>'can\'t find folder after download from github.'];
 
-    //unlink($outPath.'/config.php');
-    $response = rename($projectPath . $slash . '.data' . $slash . 'config.php', $outPath . $slash . '.data' . $slash . 'config.php');
-    if (!$response) {
-        $tmp1['code'] = "Move Failed";
-        $tmp1['message'] = "Can not move " . $projectPath . $slash . '.data' . $slash . 'config.php' . " to " . $outPath . $slash . '.data' . $slash . 'config.php';
-        return json_encode($tmp1);
-    }
     return moveFolder($outPath, $projectPath);
 }
 
 function moveFolder($from, $to)
 {
-    global $slash;
-    if (substr($from, -1)==$slash) $from = substr($from, 0, -1);
-    if (substr($to, -1)==$slash) $to = substr($to, 0, -1);
+    if (substr($from, -1)=='/') $from = substr($from, 0, -1);
+    if (substr($to, -1)=='/') $to = substr($to, 0, -1);
     if (!file_exists($to)) mkdir($to, 0777);
     $handler=opendir($from);
     while($filename=readdir($handler)) {
         if($filename != '.' && $filename != '..'){
-            $fromfile = $from . $slash . $filename;
-            $tofile = $to . $slash . $filename;
+            $fromfile = $from . '/' . $filename;
+            $tofile = $to . '/' . $filename;
             if(is_dir($fromfile)){// 如果读取的某个对象是文件夹，则递归
                 $response = moveFolder($fromfile, $tofile);
                 if (api_error(setConfigResponse($response))) return $response;
             }else{
-                //if (file_exists($tofile)) unlink($tofile);
+                if (file_exists($tofile)) unlink($tofile);
                 $response = rename($fromfile, $tofile);
                 if (!$response) {
                     $tmp['code'] = "Move Failed";
                     $tmp['message'] = "Can not move " . $fromfile . " to " . $tofile;
-                    return json_encode($tmp);
+                    return ['stat'=>500, 'body'=>json_encode($tmp)];
                 }
                 if (file_exists($fromfile)) unlink($fromfile);
             }
@@ -381,7 +345,7 @@ function moveFolder($from, $to)
     }
     closedir($handler);
     rmdir($from);
-    return json_encode( [ 'response' => 'success' ] );
+    return ['stat'=>200, 'body'=>'success.'];
 }
 
 function WaitFunction() {

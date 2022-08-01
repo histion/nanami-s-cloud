@@ -1,4 +1,6 @@
 <?php
+        // https://cloud.baidu.com/doc/CFC/s/jjwvz45ex
+        // https://cloud.baidu.com/doc/CFC/s/2jwvz44ns
 
 function printInput($event, $context)
 {
@@ -26,14 +28,6 @@ function GetGlobalVariable($event)
         $pos = strpos($cookievalues,"=");
         $_COOKIE[urldecode(substr($cookievalues,0,$pos))]=urldecode(substr($cookievalues,$pos+1));
     }
-    $_SERVER['HTTP_USER_AGENT'] = $event['headers']['User-Agent'];
-    if (isset($event['headers']['authorization'])) {
-        $basicAuth = splitfirst(base64_decode(splitfirst($event['headers']['authorization'], 'Basic ')[1]), ':');
-        $_SERVER['PHP_AUTH_USER'] = $basicAuth[0];
-        $_SERVER['PHP_AUTH_PW'] = $basicAuth[1];
-    }
-    $_SERVER['HTTP_TRANSLATE'] = $event['headers']['translate'];//'f'
-    $_SERVER['BCE_CFC_RUNTIME_NAME'] = 'php7';
 }
 
 function GetPathSetting($event, $context)
@@ -42,11 +36,23 @@ function GetPathSetting($event, $context)
     $_SERVER['functionBrn'] = $context['functionBrn'];
     $_SERVER['base_path'] = '/';
     $path = $event['path'];
-    if (substr($path,-1)=='/') $path=substr($path,0,-1);
-    $_SERVER['is_guestup_path'] = is_guestup_path($path);
-    $_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
+    //$_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
     $_SERVER['REMOTE_ADDR'] = $event['requestContext']['sourceIp'];
     $_SERVER['HTTP_X_REQUESTED_WITH'] = $event['headers']['X-Requested-With'];
+    $_SERVER['HTTP_USER_AGENT'] = $event['headers']['User-Agent'];
+    if (isset($event['headers']['authorization'])) {
+        $basicAuth = splitfirst(base64_decode(splitfirst($event['headers']['authorization'], 'Basic ')[1]), ':');
+        $_SERVER['PHP_AUTH_USER'] = $basicAuth[0];
+        $_SERVER['PHP_AUTH_PW'] = $basicAuth[1];
+    }
+    $_SERVER['HTTP_HOST'] = $event['headers']['Host'];
+    $_SERVER['REQUEST_SCHEME'] = $event['headers']['X-Forwarded-Proto'];
+    $_SERVER['host'] = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
+    $_SERVER['referhost'] = explode('/', $event['headers']['Referer'])[2];
+    $_SERVER['HTTP_TRANSLATE'] = $event['headers']['translate'];//'f'
+    $_SERVER['HTTP_IF_MODIFIED_SINCE'] = $event['headers']['If-Modified-Since'];
+    $_SERVER['REQUEST_METHOD'] = $event['httpMethod'];
+    $_SERVER['BCE_CFC_RUNTIME_NAME'] = 'php7';
     return $path;
 }
 
@@ -75,7 +81,10 @@ function setConfig($arr, $disktag = '')
     $indisk = 0;
     $operatedisk = 0;
     foreach ($arr as $k => $v) {
-        if (isInnerEnv($k)) {
+        if (isCommonEnv($k)) {
+            if (isBase64Env($k)) $tmp[$k] = base64y_encode($v);
+            else $tmp[$k] = $v;
+        } elseif (isInnerEnv($k)) {
             if (isBase64Env($k)) $diskconfig[$k] = base64y_encode($v);
             else $diskconfig[$k] = $v;
             $indisk = 1;
@@ -94,8 +103,7 @@ function setConfig($arr, $disktag = '')
         } elseif ($k=='disktag_rename' || $k=='disktag_newname') {
             if ($arr['disktag_rename']!=$arr['disktag_newname']) $operatedisk = 1;
         } else {
-            if (isBase64Env($k)) $tmp[$k] = base64y_encode($v);
-            else $tmp[$k] = $v;
+            $tmp[$k] = json_encode($v);
         }
     }
     if ($indisk) {
@@ -159,16 +167,16 @@ function install()
     }
     if ($_GET['install1']) {
         $tmp['timezone'] = $_COOKIE['timezone'];
-        $SecretId = getConfig('SecretId');
-        if ($SecretId=='') {
+        //$SecretId = getConfig('SecretId');
+        //if ($SecretId=='') {
             $SecretId = $_POST['SecretId'];
             $tmp['SecretId'] = $SecretId;
-        }
-        $SecretKey = getConfig('SecretKey');
-        if ($SecretKey=='') {
+        //}
+        //$SecretKey = getConfig('SecretKey');
+        //if ($SecretKey=='') {
             $SecretKey = $_POST['SecretKey'];
             $tmp['SecretKey'] = $SecretKey;
-        }
+        //}
         $response = setConfigResponse(SetbaseConfig($tmp, $SecretId, $SecretKey));
         if (api_error($response)) {
             $html = api_error_msg($response);
@@ -202,12 +210,13 @@ language:<br>';
             $html .= '
         <label><input type="radio" name="language" value="'.$key1.'" '.($key1==$constStr['language']?'checked':'').' onclick="changelanguage(\''.$key1.'\')">'.$value1.'</label><br>';
         }
-        if (getConfig('SecretId')==''||getConfig('SecretKey')=='') $html .= '
-        <a href="https://console.bce.baidu.com/iam/#/iam/accesslist" target="_blank">'.getconstStr('Create').' Access Key & Secret Key</a><br>
-        <label>Access Key:<input name="SecretId" type="text" placeholder="" size=""></label><br>
-        <label>Secret Key:<input name="SecretKey" type="text" placeholder="" size=""></label><br>';
+        //if (getConfig('SecretId')==''||getConfig('SecretKey')=='') 
         $html .= '
-        <input type="submit" value="'.getconstStr('Submit').'">
+        <a href="https://console.bce.baidu.com/iam/#/iam/accesslist" target="_blank">' . getconstStr('Create') . ' Access Key & Secret Key</a><br>
+        <label>Access Key:<input name="SecretId" type="text" placeholder="" size=""></label><br>
+        <label>Secret Key:<input name="SecretKey" type="password" placeholder="" size=""></label><br>';
+        $html .= '
+        <input type="submit" value="' . getconstStr('Submit') . '">
     </form>
     <script>
         var nowtime= new Date();
@@ -226,7 +235,8 @@ language:<br>';
         }
         function notnull(t)
         {';
-        if (getConfig('SecretId')==''||getConfig('SecretKey')=='') $html .= '
+        //if (getConfig('SecretId')==''||getConfig('SecretKey')=='') 
+        $html .= '
             if (t.SecretId.value==\'\') {
                 alert(\'input Access Key\');
                 return false;
@@ -357,7 +367,7 @@ function api_error_msg($response)
 {
     if (isset($response['code'])) $html = $response['code'] . '<br>
 ' . $response['message'];
-    else $html = var_dump($response);
+    else $html = json_encode($response, JSON_PRETTY_PRINT);
     return $html . '<br><br>
 BRN: ' . $_SERVER['functionBrn'] . '<br>
 <button onclick="location.href = location.href;">'.getconstStr('Refresh').'</button>';
@@ -369,29 +379,24 @@ function setConfigResponse($response)
     return json_decode( $response, true );
 }
 
-function OnekeyUpate($auth = 'qkqpttgf', $project = 'OneManager-php', $branch = 'master')
+function OnekeyUpate($GitSource = 'Github', $auth = 'qkqpttgf', $project = 'OneManager-php', $branch = 'master')
 {
     $source = '/tmp/code.zip';
     $outPath = '/tmp/';
 
-    // 从github下载对应tar.gz，并解压
-    $url = 'https://github.com/' . $auth . '/' . $project . '/tarball/' . urlencode($branch) . '/';
+    if ($GitSource=='Github') {
+        // 从github下载对应tar.gz，并解压
+        $url = 'https://github.com/' . $auth . '/' . $project . '/tarball/' . urlencode($branch) . '/';
+    } elseif ($GitSource=='HITGitlab') {
+        $url = 'https://git.hit.edu.cn/' . $auth . '/' . $project . '/-/archive/' . urlencode($branch) . '/' . $project . '-' . urlencode($branch) . '.tar.gz';
+    } else return json_encode(['FunctionBrn'=>$_SERVER['functionBrn'], 'code'=>'Git Source input Error!']);
     $tarfile = '/tmp/github.tar.gz';
     file_put_contents($tarfile, file_get_contents($url));
     $phar = new PharData($tarfile);
     $html = $phar->extractTo($outPath, null, true);//路径 要解压的文件 是否覆盖
 
-    // 获取包中目录名
-    $tmp = scandir('phar://'.$tarfile);
-    $name = $auth.'-'.$project;
-    foreach ($tmp as $f) {
-        if ( substr($f, 0, strlen($name)) == $name) {
-            $outPath .= $f;
-            break;
-        }
-    }
-    // 放入配置文件
-    //file_put_contents($outPath . '/config.php', file_get_contents(__DIR__.'/../config.php'));
+    // 获取解压出的目录名
+    $outPath = findIndexPath($outPath);
 
     // 将目录中文件打包成zip
     //$zip=new ZipArchive();
@@ -423,5 +428,64 @@ function addFileToZip($zip, $rootpath, $path = '')
             }
         }
     }
-    @closedir($path);
+    @closedir($handler);
+}
+
+function WaitFunction() {
+    return true;
+}
+
+function changeAuthKey() {
+    if ($_POST['SecretId']!=''&&$_POST['SecretKey']!='') {
+        $SecretId = $_POST['SecretId'];
+        $tmp['SecretId'] = $SecretId;
+        $SecretKey = $_POST['SecretKey'];
+        $tmp['SecretKey'] = $SecretKey;
+        $response = setConfigResponse(SetbaseConfig($tmp, $SecretId, $SecretKey));
+        if (api_error($response)) {
+            $html = api_error_msg($response);
+            $title = 'Error';
+            return message($html, $title, 400);
+        } else {
+            $html = getconstStr('Success') . '
+    <script>
+        var i = 0;
+        var uploadList = setInterval(function(){
+            if (document.getElementById("dis").style.display=="none") {
+                console.log(i++);
+            } else {
+                clearInterval(uploadList);
+                location.href = "' . path_format($_SERVER['base_path'] . '/') . '";
+            }
+        }, 1000);
+    </script>';
+            return message($html, $title, 201, 1);
+        }
+    }
+    $html = '
+    <form action="" method="post" onsubmit="return notnull(this);">
+        <a href="https://console.bce.baidu.com/iam/#/iam/accesslist" target="_blank">' . getconstStr('Create') . ' Access Key & Secret Key</a><br>
+        <label>Access Key:<input name="SecretId" type="text" placeholder="" size=""></label><br>
+        <label>Secret Key:<input name="SecretKey" type="password" placeholder="" size=""></label><br>
+        <input type="submit" value="' . getconstStr('Submit') . '">
+    </form>
+    <script>
+        function notnull(t)
+        {
+            if (t.SecretId.value==\'\') {
+                alert(\'input Access Key\');
+                return false;
+            }
+            if (t.SecretKey.value==\'\') {
+                alert(\'input Secret Key\');
+                return false;
+            }
+            return true;
+        }
+    </script>';
+    return message($html, 'Change platform Auth token or key', 200);
+}
+
+function smallfileupload($drive, $path) {
+    return output('Can not upload through CFC.', 400);
 }

@@ -1,4 +1,7 @@
 <?php
+// https://cloud.tencent.com/document/product/583/33846
+// https://cloud.tencent.com/document/product/583/18581
+// https://cloud.tencent.com/document/product/583/18580
 
 function printInput($event, $context)
 {
@@ -23,14 +26,6 @@ function GetGlobalVariable($event)
         $pos = strpos($cookievalues,"=");
         $_COOKIE[urldecode(substr($cookievalues,0,$pos))]=urldecode(substr($cookievalues,$pos+1));
     }
-    $_SERVER['HTTP_USER_AGENT'] = $event['headers']['user-agent'];
-    if (isset($event['headers']['authorization'])) {
-        $basicAuth = splitfirst(base64_decode(splitfirst($event['headers']['authorization'], 'Basic ')[1]), ':');
-        $_SERVER['PHP_AUTH_USER'] = $basicAuth[0];
-        $_SERVER['PHP_AUTH_PW'] = $basicAuth[1];
-    }
-    $_SERVER['HTTP_TRANSLATE']==$event['headers']['translate'];//'f'
-    $_SERVER['USER'] = 'qcloud';
 }
 
 function GetPathSetting($event, $context)
@@ -38,7 +33,7 @@ function GetPathSetting($event, $context)
     $_SERVER['firstacceptlanguage'] = strtolower(splitfirst(splitfirst($event['headers']['accept-language'],';')[0],',')[0]);
     $_SERVER['function_name'] = $context['function_name'];
     $_SERVER['namespace'] = $context['namespace'];
-    $_SERVER['Region'] = getenv('TENCENTCLOUD_REGION');
+    $_SERVER['Region'] = $context['tencentcloud_region'];
     $host_name = $event['headers']['host'];
     $_SERVER['HTTP_HOST'] = $host_name;
     $serviceId = $event['requestContext']['serviceId'];
@@ -49,11 +44,23 @@ function GetPathSetting($event, $context)
         $_SERVER['base_path'] = $event['requestContext']['path'];
         $path = substr($event['path'], strlen($event['requestContext']['path']));
     }
-    if (substr($path,-1)=='/') $path=substr($path,0,-1);
-    $_SERVER['is_guestup_path'] = is_guestup_path($path);
-    $_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
+    //$_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
     $_SERVER['REMOTE_ADDR'] = $event['requestContext']['sourceIp'];
     $_SERVER['HTTP_X_REQUESTED_WITH'] = $event['headers']['x-requested-with'];
+    $_SERVER['HTTP_USER_AGENT'] = $event['headers']['user-agent'];
+    if (isset($event['headers']['authorization'])) {
+        $basicAuth = splitfirst(base64_decode(splitfirst($event['headers']['authorization'], 'Basic ')[1]), ':');
+        $_SERVER['PHP_AUTH_USER'] = $basicAuth[0];
+        $_SERVER['PHP_AUTH_PW'] = $basicAuth[1];
+    }
+    $_SERVER['REQUEST_SCHEME'] = $event['headers']['x-api-scheme'];
+    //$_SERVER['REQUEST_SCHEME'] = $event['headers']['x-forwarded-proto'];
+    $_SERVER['host'] = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
+    $_SERVER['referhost'] = explode('/', $event['headers']['referer'])[2];
+    $_SERVER['HTTP_TRANSLATE'] = $event['headers']['translate'];//'f'
+    $_SERVER['HTTP_IF_MODIFIED_SINCE'] = $event['headers']['if-modified-since'];
+    $_SERVER['REQUEST_METHOD'] = $event['httpMethod'];
+    $_SERVER['USER'] = 'qcloud';
     return $path;
 }
 
@@ -68,12 +75,12 @@ function getConfig($str, $disktag = '')
         if (isInnerEnv($str)) {
             if ($disktag=='') $disktag = $_SERVER['disktag'];
             if (isset($envs[$disktag][$str])) {
-                if (in_array($str, $Base64Env)) return base64y_decode($envs[$disktag][$str]);
+                if (isBase64Env($str)) return base64y_decode($envs[$disktag][$str]);
                 else return $envs[$disktag][$str];
             }
         } else {
             if (isset($envs[$str])) {
-                if (in_array($str, $Base64Env)) return base64y_decode($envs[$str]);
+                if (isBase64Env($str)) return base64y_decode($envs[$str]);
                 else return $envs[$str];
             }
         }
@@ -93,8 +100,11 @@ function setConfig($arr, $disktag = '')
     $indisk = 0;
     $operatedisk = 0;
     foreach ($arr as $k => $v) {
-        if (isInnerEnv($k)) {
-            if (in_array($k, $Base64Env)) $envs[$disktag][$k] = base64y_encode($v);
+        if (isCommonEnv($k)) {
+            if (isBase64Env($k)) $envs[$k] = base64y_encode($v);
+            else $envs[$k] = $v;
+        } elseif (isInnerEnv($k)) {
+            if (isBase64Env($k)) $envs[$disktag][$k] = base64y_encode($v);
             else $envs[$disktag][$k] = $v;
             $indisk = 1;
         } elseif ($k=='disktag_add') {
@@ -112,8 +122,7 @@ function setConfig($arr, $disktag = '')
         } elseif ($k=='disktag_rename' || $k=='disktag_newname') {
             if ($arr['disktag_rename']!=$arr['disktag_newname']) $operatedisk = 1;
         } else {
-            if (in_array($k, $Base64Env)) $envs[$k] = base64y_encode($v);
-            else $envs[$k] = $v;
+            $envs[$k] = $v;
         }
     }
     if ($indisk) {
@@ -173,29 +182,31 @@ function install()
             var expires = "expires="+expd.toGMTString();
             document.cookie=\'language=; path=/; \'+expires;
         </script>
-        <meta http-equiv="refresh" content="3;URL=' . $url . '">', 'Program updating', 201);
+        <meta http-equiv="refresh" content="3;URL=' . $url . '">', 'Program updating', 201, 1);
         }
-        return output('Jump
+        return message(getconstStr('Success') . '
     <script>
         var expd = new Date();
         expd.setTime(expd.getTime()+(2*60*60*1000));
         var expires = "expires="+expd.toGMTString();
         document.cookie=\'language=; path=/; \'+expires;
-    </script>
-    <meta http-equiv="refresh" content="3;URL=' . path_format($_SERVER['base_path'] . '/') . '">', 302);
+        var i = 0;
+        var uploadList = setInterval(function(){
+            if (document.getElementById("dis").style.display=="none") {
+                console.log(i++);
+            } else {
+                clearInterval(uploadList);
+                location.href = "' . path_format($_SERVER['base_path'] . '/') . '";
+            }
+        }, 1000);
+    </script>', 201, 1);
     }
     if ($_GET['install1']) {
         $tmp['timezone'] = $_COOKIE['timezone'];
-        $SecretId = getConfig('SecretId');
-        if ($SecretId=='') {
-            $SecretId = $_POST['SecretId'];
-            $tmp['SecretId'] = $SecretId;
-        }
-        $SecretKey = getConfig('SecretKey');
-        if ($SecretKey=='') {
-            $SecretKey = $_POST['SecretKey'];
-            $tmp['SecretKey'] = $SecretKey;
-        }
+        $SecretId = $_POST['SecretId'];
+        $tmp['SecretId'] = $SecretId;
+        $SecretKey = $_POST['SecretKey'];
+        $tmp['SecretKey'] = $SecretKey;
         $tmp['ONEMANAGER_CONFIG_SAVE'] = $_POST['ONEMANAGER_CONFIG_SAVE'];
         $response = json_decode(SetbaseConfig($tmp, $_SERVER['function_name'], $_SERVER['Region'], $_SERVER['namespace'], $SecretId, $SecretKey), true)['Response'];
         if (api_error($response)) {
@@ -206,7 +217,7 @@ function install()
             if ($tmp['ONEMANAGER_CONFIG_SAVE'] != 'file') {
                 $html = getconstStr('ONEMANAGER_CONFIG_SAVE_ENV') . '<br><a href="' . $_SERVER['base_path'] . '">' . getconstStr('Home') . '</a>';
                 $title = 'Reinstall';
-                return message($html, $title, 201);
+                return message($html, $title, 201, 1);
             }
             $html .= '
     <form action="?install2" method="post" onsubmit="return notnull(this);">
@@ -224,7 +235,7 @@ function install()
         }
     </script>';
             $title = getconstStr('SetAdminPassword');
-            return message($html, $title, 201);
+            return message($html, $title, 201, 1);
         }
     }
     if ($_GET['install0']) {
@@ -235,10 +246,11 @@ language:<br>';
             $html .= '
         <label><input type="radio" name="language" value="'.$key1.'" '.($key1==$constStr['language']?'checked':'').' onclick="changelanguage(\''.$key1.'\')">'.$value1.'</label><br>';
         }
-        if (getConfig('SecretId')==''||getConfig('SecretKey')=='') $html .= '
+        //if (getConfig('SecretId')==''||getConfig('SecretKey')=='') 
+        $html .= '
         <a href="https://console.cloud.tencent.com/cam/capi" target="_blank">'.getconstStr('Create').' SecretId & SecretKey</a><br>
         <label>SecretId:<input name="SecretId" type="text" placeholder="" size=""></label><br>
-        <label>SecretKey:<input name="SecretKey" type="text" placeholder="" size=""></label><br>';
+        <label>SecretKey:<input name="SecretKey" type="password" placeholder="" size=""></label><br>';
         $html .= '
         <label><input type="radio" name="ONEMANAGER_CONFIG_SAVE" value="" ' . ('file'==getenv('ONEMANAGER_CONFIG_SAVE')?'':'checked') . '>' . getconstStr('ONEMANAGER_CONFIG_SAVE_ENV') . '</label><br>
         <label><input type="radio" name="ONEMANAGER_CONFIG_SAVE" value="file" ' . ('file'==getenv('ONEMANAGER_CONFIG_SAVE')?'checked':'') . '>' . getconstStr('ONEMANAGER_CONFIG_SAVE_FILE') . '</label><br>';
@@ -262,7 +274,8 @@ language:<br>';
         }
         function notnull(t)
         {';
-        if (getConfig('SecretId')==''||getConfig('SecretKey')=='') $html .= '
+        //if (getConfig('SecretId')==''||getConfig('SecretKey')=='') 
+        $html .= '
             if (t.SecretId.value==\'\') {
                 alert(\'input SecretId\');
                 return false;
@@ -583,27 +596,25 @@ function setConfigResponse($response)
     return json_decode( $response, true )['Response'];
 }
 
-function OnekeyUpate($auth = 'qkqpttgf', $project = 'OneManager-php', $branch = 'master')
+function OnekeyUpate($GitSource = 'Github', $auth = 'qkqpttgf', $project = 'OneManager-php', $branch = 'master')
 {
     $source = '/tmp/code.zip';
     $outPath = '/tmp/';
 
-    // 从github下载对应tar.gz，并解压
-    $url = 'https://github.com/' . $auth . '/' . $project . '/tarball/' . urlencode($branch) . '/';
+    if ($GitSource=='Github') {
+        // 从github下载对应tar.gz，并解压
+        $url = 'https://github.com/' . $auth . '/' . $project . '/tarball/' . urlencode($branch) . '/';
+    } elseif ($GitSource=='HITGitlab') {
+        $url = 'https://git.hit.edu.cn/' . $auth . '/' . $project . '/-/archive/' . urlencode($branch) . '/' . $project . '-' . urlencode($branch) . '.tar.gz';
+    } else return json_encode(['Response'=>['Error'=>['code'=>'Git Source input Error!']]]);
     $tarfile = '/tmp/github.tar.gz';
     file_put_contents($tarfile, file_get_contents($url));
     $phar = new PharData($tarfile);
     $html = $phar->extractTo($outPath, null, true);//路径 要解压的文件 是否覆盖
 
-    // 获取包中目录名
-    $tmp = scandir('phar://'.$tarfile);
-    $name = $auth.'-'.$project;
-    foreach ($tmp as $f) {
-        if ( substr($f, 0, strlen($name)) == $name) {
-            $outPath .= $f;
-            break;
-        }
-    }
+    // 获取解压出的目录名
+    $outPath = findIndexPath($outPath);
+
     // 放入配置文件
     file_put_contents($outPath . '/.data/config.php', file_get_contents(__DIR__ . '/../.data/config.php'));
 
@@ -637,5 +648,64 @@ function addFileToZip($zip, $rootpath, $path = '')
             }
         }
     }
-    @closedir($path);
+    @closedir($handler);
+}
+
+function WaitFunction() {
+    if ( json_decode(getfunctioninfo($_SERVER['function_name'], $_SERVER['Region'], $_SERVER['namespace'], getConfig('SecretId'), getConfig('SecretKey')),true)['Response']['Status']=='Active' ) return true;
+    else return false;
+}
+
+function changeAuthKey() {
+    if ($_POST['SecretId']!=''&&$_POST['SecretId']!='') {
+        $tmp['SecretId'] = $_POST['SecretId'];
+        $tmp['SecretKey'] = $_POST['SecretKey'];
+        $response = setConfigResponse( SetbaseConfig($tmp, $_SERVER['function_name'], $_SERVER['Region'], $_SERVER['namespace'], $tmp['SecretId'], $tmp['SecretKey']) );
+        if (api_error($response)) {
+            $html = api_error_msg($response);
+            $title = 'Error';
+            return message($html, $title, 400);
+        } else {
+            $html = getconstStr('Success') . '
+    <script>
+        var status = "' . $response['DplStatus'] . '";
+        var i = 0;
+        var uploadList = setInterval(function(){
+            if (document.getElementById("dis").style.display=="none") {
+                console.log(i++);
+            } else {
+                clearInterval(uploadList);
+                location.href = "' . path_format($_SERVER['base_path'] . '/') . '";
+            }
+        }, 1000);
+    </script>';
+            return message($html, $title, 201, 1);
+        }
+    }
+    $html = '
+    <form action="" method="post" onsubmit="return notnull(this);">
+        <a href="https://console.cloud.tencent.com/cam/capi" target="_blank">' . getconstStr('Create') . ' SecretId & SecretKey</a><br>
+        <label>SecretId:<input name="SecretId" type="text" placeholder="" size=""></label><br>
+        <label>SecretKey:<input name="SecretKey" type="password" placeholder="" size=""></label><br>
+        <input type="submit" value="' . getconstStr('Submit') . '">
+    </form>
+    <script>
+        function notnull(t)
+        {
+            if (t.SecretId.value==\'\') {
+                alert(\'input SecretId\');
+                return false;
+            }
+            if (t.SecretKey.value==\'\') {
+                alert(\'input SecretKey\');
+                return false;
+            }
+            return true;
+        }
+    </script>';
+    return message($html, 'Change platform Auth token or key', 200);
+}
+
+function smallfileupload($drive, $path) {
+    return output('Can not upload through SCF.', 400);
 }
